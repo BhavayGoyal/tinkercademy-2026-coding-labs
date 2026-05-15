@@ -32,7 +32,7 @@
  */
 std::vector<std::string> get_applicants(const std::string& filename) {
   std::ifstream file(filename);
-  if (!file.is_open()) throw std::runtime_error("Could not open file: " + filename);
+  if (!file) throw std::runtime_error("Could not open file: " + filename);
   std::vector<std::string> applicants;
   applicants.reserve(1000);
   std::string line;
@@ -42,6 +42,7 @@ std::vector<std::string> get_applicants(const std::string& filename) {
           applicants.push_back(line);
         }
     }
+    file.close();
     return applicants;
 }
 
@@ -79,7 +80,7 @@ std::vector<std::string> find_matches(std::string_view name,
   std::string target = initials(name);
   std::ranges::copy_if(students, std::back_inserter(matches), 
       [&target](const std::string& proj) { return proj == target; },
-      [](const std::string& student) { return initials(student); }
+      initials
   );
   return matches;
 }
