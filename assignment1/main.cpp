@@ -31,8 +31,18 @@
  *     Justify your choice in short_answer.txt.
  */
 std::vector<std::string> get_applicants(const std::string& filename) {
-  // STUDENT TODO: Implement this function.
-  throw std::runtime_error("Not implemented: get_applicants");
+  std::ifstream file(filename);
+  if (!file.is_open()) throw std::runtime_error("Could not open file: " + filename);
+  std::vector<std::string> applicants;
+  applicants.reserve(1000);
+  std::string line;
+    while (std::getline(file, line)) {
+        if (!line.empty()) {
+          line.back() == '\r' ? line.pop_back() : void();
+          applicants.push_back(line);
+        }
+    }
+    return applicants;
 }
 
 /**
@@ -43,8 +53,15 @@ std::vector<std::string> get_applicants(const std::string& filename) {
  *   - Parameter must be `std::string_view` (no allocation).
  */
 std::string initials(std::string_view name) {
-  // STUDENT TODO: Implement this function.
-  throw std::runtime_error("Not implemented: initials");
+  std::string res;
+  size_t space_pos = name.find(' ');
+  if (space_pos == std::string_view::npos) {
+    res += std::toupper(name[0]);
+  } else {
+    res += std::toupper(name[0]);
+    if (space_pos + 1 < name.size()) res += std::toupper(name[space_pos + 1]);
+  }
+  return res;
 }
 
 /**
@@ -58,8 +75,13 @@ std::string initials(std::string_view name) {
  */
 std::vector<std::string> find_matches(std::string_view name,
                                       const std::vector<std::string>& students) {
-  // STUDENT TODO: Implement this function.
-  throw std::runtime_error("Not implemented: find_matches");
+  std::vector<std::string> matches;
+  std::string target = initials(name);
+  std::ranges::copy_if(students, std::back_inserter(matches), 
+      [&target](const std::string& proj) { return proj == target; },
+      [](const std::string& student) { return initials(student); }
+  );
+  return matches;
 }
 
 /**
@@ -70,8 +92,13 @@ std::vector<std::string> find_matches(std::string_view name,
  *   - Do NOT use pop_back() or rand() % size.
  */
 std::string get_match(const std::vector<std::string>& matches) {
-  // STUDENT TODO: Implement this function.
-  throw std::runtime_error("Not implemented: get_match");
+  if (matches.empty()) return "NO MATCHES FOUND.";
+
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::string match;
+    std::sample(matches.begin(), matches.end(), &match, 1, gen);
+    return match;
 }
 
 /**
@@ -90,10 +117,24 @@ std::string get_match(const std::vector<std::string>& matches) {
  *     three acceptable strategies — and document your choice in
  *     short_answer.txt.
  */
-std::vector<std::pair<std::string, std::string>>
-run_mixer(std::vector<std::string>& applicants) {
-  // STUDENT TODO: Implement this function.
-  throw std::runtime_error("Not implemented: run_mixer");
+std::vector<std::pair<std::string, std::string>> run_mixer(std::vector<std::string>& applicants) {
+  std::vector<std::pair<std::string, std::string>> pairs;
+  while (true) {
+    bool found = false;
+    for (auto it = applicants.begin(); it != applicants.end(); ) {
+      auto match_it = std::find_if(it + 1, applicants.end(),
+                [&](const std::string& s) { return initials(s) == initials(*it); });
+      if (match_it == applicants.end()) it++;
+      else {
+        pairs.emplace_back(*it, *match_it);
+        applicants.erase(match_it);
+        it = applicants.erase(it);
+        found = true;
+      }
+    }
+    if (!found) break;
+  }
+  return pairs;
 }
 
 /* #### Please don't remove this line! #### */

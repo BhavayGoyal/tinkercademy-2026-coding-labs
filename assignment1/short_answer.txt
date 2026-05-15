@@ -2,21 +2,18 @@ Assignment 1: Marriage Pact — short answers
 =============================================
 
 Q1. reserve vs resize — and the capacity you chose in get_applicants.
-    YOUR ANSWER:
-
+    YOUR ANSWER: reserve allocates memory capacity for a vector without changing its size or default-constructing any elements, while "resize" actually changes the number of elements in the vector (constructing or destroying elements as needed). I chose a capacity of "1000" because the provided dataset and test cases explicitly check for 1,000 students; reserving this upfront prevents the vector from needing to reallocate memory multiple times as it grows.
 
 Q2. What does it mean for a std::ranges algorithm to take a projection?
     Give one example from your find_matches (or explain why a projection
     didn't help).
-    YOUR ANSWER:
-
+    YOUR ANSWER: A projection is a transformation function applied to an element before it is passed to the algorithm's main predicate, allowing you to separate the data extraction from the logical condition. In "find_matches", I passed a lambda that calls "initials(s)" as the projection to "std::ranges::copy_if". This allowed my predicate to simply check "student_initials == target_initials" rather than cluttering the comparison logic with the string-parsing behavior. The projection in this case didn't really help in improving the perfomance, I used it mainly only because it was mentioned to use it.
 
 Q3. Iterator invalidation in run_mixer. Which strategy did you choose
     (erase-returns-next-iterator / indices / restart) and why?
     What specifically goes wrong with the naive approach?
-    YOUR ANSWER:
-
+    YOUR ANSWER: I chose the "use the iterator returned by erase()" strategy because it perfectly suits standard STL iterator traversal while maintaining performance. In the naive approach ("applicants.erase(it); ++it;"), erasing an element destroys it and shifts all subsequent elements left to fill the gap. This immediately invalidates the iterator pointing to the erased element, causing undefined behavior or crashes when the loop attempts to increment it.
 
 Q4. at() vs []. When, if ever, would you reach for vec.at(i) over
     vec[i] in this assignment?
-    YOUR ANSWER:
+    YOUR ANSWER: "at()" performs runtime bounds checking and throws a "std::out_of_range" exception if the index is invalid, whereas "[]" assumes the index is valid (leading to undefined behavior if it isn't). You would reach for "vec.at(i)" when dealing with dynamically changing boundaries or unknown user input where you cannot statically guarantee the index is safe. In this assignment, "[]" is largely sufficient since we rely heavily on iterator bounds and string properties we already check.
