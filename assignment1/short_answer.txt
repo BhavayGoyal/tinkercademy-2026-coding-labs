@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Assignment 1: Marriage Pact — short answers
 =============================================
 
@@ -31,3 +32,27 @@ Q4. at() vs []. When, if ever, would you reach for vec.at(i) over
     the index is valid (leading to undefined behavior if it isn't). You would reach for "vec.at(i)" when dealing with dynamically changing boundaries 
     or unknown user input where you cannot statically guarantee the index is safe. In this assignment, "[]" is largely sufficient since we rely 
     heavily on iterator bounds and string properties we already check.
+=======
+Assignment 1: Marriage Pact — short answers
+=============================================
+
+Q1. reserve vs resize — and the capacity you chose in get_applicants.
+    YOUR ANSWER:
+
+
+Q2. What does it mean for a std::ranges algorithm to take a projection?
+    Give one example from your find_matches (or explain why a projection
+    didn't help).
+    YOUR ANSWER:
+
+
+Q3. Iterator invalidation in run_mixer. Which strategy did you choose
+    (erase-returns-next-iterator / indices / restart) and why?
+    What specifically goes wrong with the naive approach?
+    YOUR ANSWER:
+
+
+Q4. at() vs []. When, if ever, would you reach for vec.at(i) over
+    vec[i] in this assignment?
+    YOUR ANSWER:
+>>>>>>> upstream/main
