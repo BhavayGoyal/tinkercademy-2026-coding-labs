@@ -119,6 +119,8 @@ public:
 
    friend bool operator==(const unique_ptr& lhs, const unique_ptr& rhs) { return lhs.ptr == rhs.ptr; }
 
+   friend bool operator==(const unique_ptr& lhs, std::nullptr_t) { return lhs.ptr == nullptr; }
+
    friend bool operator==(std::nullptr_t, const unique_ptr& lhs) { return lhs.ptr == nullptr; }
 };
 

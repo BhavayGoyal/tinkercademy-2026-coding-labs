@@ -2,9 +2,21 @@
 
 ## 1. Optimizations Made
 
-- **Memory leak fix + memory reduction (shortest_path_bfs):** removed the separate `visited` array and used a single `distance` vector initialized to `-1` as the visited marker. This eliminates two raw `new[]` allocations, reduces per-request memory, and fixes the leak.
+- **Memory leak fix + memory reduction (shortest_path_bfs, `grid_bfs.cpp:211-268`):** removed the separate `visited` array and used a single `distance` vector initialized to `-1` as the visited marker. This eliminates two raw `new[]` allocations, reduces per-request memory, and fixes the leak.
+- **Row-major traversal in `compute_congestion_pressure` (`grid_bfs.cpp:395-415`):** swapped the inner loops to iterate row-major over the row-major `current/next` arrays and reused a row offset to reduce cache misses.
+- **Simplify arithmetic in `next_pressure_value` (`grid_bfs.cpp:358-361`):** replace divides with shifts and reduce the pulse expression modulo 16 to cut multiplies.
+- **Simplify branch structure in `next_pressure_value` (`grid_bfs.cpp:363-366`):** flip the branch so the common path falls through, reducing branch cost in the hotspot.
+- **Reuse BFS buffers across requests (`grid_bfs.cpp:277-296`):** allocate `distance` and `frontier` once in `run_all_requests` and reuse them inside `shortest_path_bfs`.
+- **Flatten BFS data access (`grid_bfs.cpp:191-268, 277-296`):** build a contiguous `open_cells` grid, use 1D indices in the frontier, and precompute neighbor offsets to reduce pointer-chasing and per-neighbor math.
+- **Shrink heatmap/congestion buffers to `uint16_t` (`grid_bfs.cpp:212-421, 493-539`):** reduce storage width for `heatmap`, congestion `current/next/source`, and their summaries while keeping distance as `int` for correctness.
+- **Enable vectorization in the congestion loop (`grid_bfs.cpp:390-414`, `Makefile:5-7`):** add `__restrict__` pointers plus vectorization pragmas, and compile perf/optimized builds with `-O3 -march=native` to let the compiler auto-vectorize the tight inner loop.
 
 ## 2. Methodology Walkthrough
+
+We first checked for memory leaks, then profiled to identify the primary hotspots. Hotspot profiling (perf/gprof) pointed to `compute_congestion_pressure`, `shortest_path_bfs`, and `next_pressure_value`, so the optimizations focus on those functions in `grid_bfs.cpp` (cache-friendly traversal in `compute_congestion_pressure`, per-request BFS setup reductions in `shortest_path_bfs`, and inner-loop overhead trimming in `next_pressure_value`).
+
+### Attempted but reverted: Bit-packed `open_cells`
+We tried bit-packing `open_cells` to 1 bit per cell. It reduced cache misses but increased total time (0.9348 s → 0.9459 s), likely because each neighbor check now needs extra shifts/masks and bit-index arithmetic, so it was reverted.
 
 ### 1) Memory leak investigation (Valgrind)
 1. Build debug and run Memcheck:
@@ -32,6 +44,75 @@
 ==...== All heap blocks were freed -- no leaks are possible
 ==...== ERROR SUMMARY: 0 errors from 0 contexts
 ```
+
+### 2) Optimization 1: Row-major congestion traversal
+1. Baseline (reference code in `unoptimized/`): taken from `unoptimized/perf-stat.txt`.
+2. Change: swap the congestion loop order to row-major and reuse a `row_offset` per row.
+3. Result: large drop in L1D miss rate and overall time.
+
+| Metric (perf stat) | Before (unoptimized) | After (row-major + next_pressure) | Latest (row-major + next_pressure + BFS reuse + BFS flatten + type shrink) |
+| --- | --- | --- | --- |
+| L1-dcache-load-miss rate | 12.95% | 1.16% | 1.01% |
+| cache-miss rate | 13.14% | 1.13% | 1.02% |
+| cycles | 4,636,024,496 | 2,959,750,912 | 2,259,059,480 |
+| time elapsed | 2.2067 s | 1.2273 s | 0.9348 s |
+
+### 3) Optimization 2: Simplify arithmetic in `next_pressure_value`
+1. Reason: perf report shows ~20% of cycles in `next_pressure_value`, and callgrind shows a large instruction share in its inner math.
+2. Change: replace `/ 8` and `/ 2` with shifts and reduce the pulse expression modulo 16 to remove multiplies.
+3. Result: instruction count and total cycles drop.
+
+| Metric (perf stat) | Before (unoptimized) | After (row-major + next_pressure) | Latest (row-major + next_pressure + BFS reuse + BFS flatten + type shrink) |
+| --- | --- | --- | --- |
+| instructions | 15,648,945,516 | 11,414,720,295 | 9,361,674,842 |
+| cycles | 4,636,024,496 | 2,959,750,912 | 2,259,059,480 |
+| time elapsed | 2.2067 s | 1.2273 s | 0.9348 s |
+
+### 4) Optimization 3: Simplify branch structure in `next_pressure_value`
+1. Reason: the branch in `next_pressure_value` fires once every 8 iterations; making the common path fall through reduces branch cost in the hotspot.
+2. Change: invert the condition so the common path is the fall-through.
+3. Result: fewer branches and lower branch-miss count alongside the time drop.
+
+| Metric (perf stat) | Before (unoptimized) | After (row-major + next_pressure) | Latest (row-major + next_pressure + BFS reuse + BFS flatten + type shrink) |
+| --- | --- | --- | --- |
+| branches | 1,950,569,607 | 1,057,251,223 | 708,889,215 |
+| branch-misses | 85,861,013 | 47,414,134 | 40,260,578 |
+| time elapsed | 2.2067 s | 1.2273 s | 0.9348 s |
+
+### 5) Optimization 4: Reuse BFS buffers across requests
+1. Reason: perf report shows ~38% of cycles in `shortest_path_bfs`, and callgrind highlights heavy `operator new`/`free` tied to `shortest_path_bfs`/`run_all_requests`.
+2. Change: allocate `distance` and `frontier` once in `run_all_requests` and reuse them inside `shortest_path_bfs` instead of reallocating per request.
+3. Result: lower instruction count and slightly fewer cycles.
+
+| Metric (perf stat) | Before (unoptimized) | After (row-major + next_pressure) | Latest (row-major + next_pressure + BFS reuse + BFS flatten + type shrink) |
+| --- | --- | --- | --- |
+| instructions | 15,648,945,516 | 11,414,720,295 | 9,361,674,842 |
+| cycles | 4,636,024,496 | 2,959,750,912 | 2,259,059,480 |
+| time elapsed | 2.2067 s | 1.2273 s | 0.9348 s |
+
+### 6) Optimization 5: Flatten BFS data access
+1. Reason: perf report shows ~38% of cycles in `shortest_path_bfs`, and cache counters show remaining L1 misses; reducing pointer-chasing and per-neighbor math is warranted.
+2. Change: build a contiguous `open_cells` grid, store frontier entries as 1D indices, and use precomputed neighbor offsets for neighbor expansion.
+3. Result: fewer branches and lower cache-miss rates alongside the runtime drop.
+
+| Metric (perf stat) | Before (unoptimized) | After (row-major + next_pressure) | Latest (row-major + next_pressure + BFS reuse + BFS flatten + type shrink) |
+| --- | --- | --- | --- |
+| L1-dcache-load-miss rate | 12.95% | 1.16% | 1.01% |
+| instructions | 15,648,945,516 | 11,414,720,295 | 9,361,674,842 |
+| cycles | 4,636,024,496 | 2,959,750,912 | 2,259,059,480 |
+| time elapsed | 2.2067 s | 1.2273 s | 0.9348 s |
+
+### 7) Optimization 6: Shrink heatmap/congestion buffers to `uint16_t`
+1. Reason: perf stat shows cache misses remain a contributor; reducing the footprint of the hottest arrays lowers memory traffic.
+2. Change: store `heatmap`, congestion `current/next/source`, and derived summaries as `uint16_t` while leaving BFS `distance` as `int` for correctness.
+3. Result: slightly lower cache-miss rates and instructions.
+
+| Metric (perf stat) | Before (unoptimized) | After (row-major + next_pressure) | Latest (row-major + next_pressure + BFS reuse + BFS flatten + type shrink) |
+| --- | --- | --- | --- |
+| L1-dcache-load-miss rate | 12.95% | 1.16% | 1.01% |
+| instructions | 15,648,945,516 | 11,414,720,295 | 9,361,674,842 |
+| cycles | 4,636,024,496 | 2,959,750,912 | 2,259,059,480 |
+| time elapsed | 2.2067 s | 1.2273 s | 0.843496345 s |
 
 ## 3. Correctness Evidence
 

@@ -1,1 +1,0 @@
-Use a mixture of seeing the code for normal optimizations, focusing on hotspots, memory leaks for code fixes
