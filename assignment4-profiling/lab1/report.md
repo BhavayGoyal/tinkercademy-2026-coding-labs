@@ -10,6 +10,7 @@
 - **Flatten BFS data access (`grid_bfs.cpp:191-268, 277-296`):** build a contiguous `open_cells` grid, use 1D indices in the frontier, and precompute neighbor offsets to reduce pointer-chasing and per-neighbor math.
 - **Shrink heatmap/congestion buffers to `uint16_t` (`grid_bfs.cpp:212-421, 493-539`):** reduce storage width for `heatmap`, congestion `current/next/source`, and their summaries while keeping distance as `int` for correctness.
 - **Enable vectorization in the congestion loop (`grid_bfs.cpp:390-414`, `Makefile:5-7`):** add `__restrict__` pointers plus vectorization pragmas, and compile perf/optimized builds with `-O3 -march=native` to let the compiler auto-vectorize the tight inner loop.
+- Used **-O3** flag for compilation instead of **O2**
 
 ## 2. Methodology Walkthrough
 
