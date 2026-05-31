@@ -143,6 +143,64 @@ Before (unoptimized):
 After (latest optimized):
 ![FlameGraph (latest)](flamegraph.svg)
 
+### Callgrind / `callgrind_annotate` (before/after)
+
+Both runs use the optimized-with-symbols build (`make all`, `-O2 -g`) on the
+reduced workload, with cache simulation on:
+
+```bash
+make all
+taskset -c 0 valgrind --tool=callgrind --cache-sim=yes ./grid_bfs --small
+callgrind_annotate callgrind.out.*
+```
+
+Full output is saved alongside this report:
+- Before: `unoptimized/callgrind-run.txt`, `unoptimized/callgrind_annotate.txt`
+- After: `callgrind-run.txt`, `callgrind_annotate.txt`
+
+**Before (unoptimized).** `callgrind_annotate` top functions by instruction
+reads (`Ir`), with read-miss share (`D1mr`):
+
+```
+Ir                    D1mr                file:function
+68,345,380 (37.91%)   2,871,734 (38.52%)  grid_bfs.cpp:operator new(unsigned long)        # per-request BFS distance/visited allocs
+52,988,657 (29.39%)           .            grid_bfs.cpp:next_pressure_value(...)
+30,555,510 (16.95%)   4,545,053 (60.97%)  grid_bfs.cpp:compute_congestion_pressure(...)   # column-major walk over row-major array
+
+Cache summary (PROGRAM TOTALS):
+  I refs        180,279,835
+  D1 misses      10,213,676   (D1 miss rate 21.4%)
+  LL misses       1,035,343   (LL miss rate  0.5%)
+```
+
+Two structural problems jump out: `operator new` is the single largest
+instruction consumer (per-request BFS allocation churn, which is also the
+source of the leak), and `compute_congestion_pressure` carries a wildly
+disproportionate **60.97%** of all D1 read misses for only 16.95% of
+instructions — the signature of the cache-unfriendly column-major traversal.
+
+**After (optimized).** Same command on the final `grid_bfs.cpp`:
+
+```
+Ir                    D1mr                file:function
+50,661,352 (46.28%)     128,443 ( 5.85%)  grid_bfs.cpp:compute_congestion_pressure(...)   # now row-major, uint16_t
+36,751,452 (33.57%)   2,029,968 (92.43%)  grid_bfs.cpp:shortest_path_bfs(...)             # reused buffers, flat indices
+
+Cache summary (PROGRAM TOTALS):
+  I refs        109,471,228
+  D1 misses       2,436,870   (D1 miss rate  8.0%)
+  LL misses         462,513   (LL miss rate  0.3%)
+```
+
+What changed:
+- The `operator new` hotspot is **gone** — BFS now reuses the `distance`/`frontier`
+  buffers across requests instead of allocating per request (this also fixes the leak).
+- `compute_congestion_pressure`'s D1 read-miss share collapses from **60.97% → 5.85%**
+  after the row-major rewrite + `uint16_t` shrink, even though it is now a larger
+  *share* of remaining instructions (because the alloc churn around it vanished).
+- Whole-program totals improve: instruction reads **180.3M → 109.5M (−39%)**,
+  D1 miss rate **21.4% → 8.0%**, LL misses **1.04M → 0.46M**.
+
 ## 3. Correctness Evidence
 
 ### `make test`
