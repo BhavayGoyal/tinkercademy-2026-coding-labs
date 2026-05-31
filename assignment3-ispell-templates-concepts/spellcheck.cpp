@@ -45,7 +45,6 @@ std::set<Misspelling> spellcheck(const Corpus& source, const Dictionary& diction
             
             std::set<std::string> suggestions(sugg_view.begin(), sugg_view.end());
             
-            // Move the set to avoid a deep copy into the struct
             return Misspelling{t, std::move(suggestions)};
         })
       | rv::filter([](const Misspelling& m) { 
