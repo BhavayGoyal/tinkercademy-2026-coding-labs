@@ -15,6 +15,13 @@
 
 We first checked for memory leaks, then profiled to identify the primary hotspots. Hotspot profiling (perf/gprof) pointed to `compute_congestion_pressure`, `shortest_path_bfs`, and `next_pressure_value`, so the optimizations focus on those functions in `grid_bfs.cpp` (cache-friendly traversal in `compute_congestion_pressure`, per-request BFS setup reductions in `shortest_path_bfs`, and inner-loop overhead trimming in `next_pressure_value`).
 
+Profiling with multiple tools surfaced these hotspots, and we applied the fixes one-by-one early in the methodology:
+1. Optimize `compute_congestion_pressure` for cache locality (row‑major traversal, tighter loops). Evidence: perf shows ~41% cycles here and perf stat reports high L1D miss rate (~13%), indicating cache‑unfriendly access. -> Done
+2. Simplify arithmetic + branches in `next_pressure_value`. Evidence: perf shows ~20% cycles in this function and callgrind attributes a large instruction share to it, so cutting divides/multiplies/branches is justified. -> Done
+3. Reduce BFS per‑request allocations (reuse buffers, avoid repeated vector alloc/free). Evidence: perf shows ~38% in `shortest_path_bfs`, and callgrind highlights heavy new/free tied to `shortest_path_bfs`/`run_all_requests`. -> Done
+4. Flatten BFS data access (1D indices, contiguous grid, precomputed neighbor offsets). Evidence: BFS is a top hotspot in perf and L1 misses were still high, so reducing pointer‑chasing and per‑neighbor math is supported. -> Done
+5. Shrink BFS/congestion data types where safe (e.g., `uint16_t` for heatmap/congestion). Evidence: perf stat shows significant cache misses; reducing footprint targets memory traffic in the two biggest hotspots. -> Done
+
 ### 1) Memory leak investigation (Valgrind)
 1. Build debug and run Memcheck:
    `make debug && taskset -c 0 valgrind --leak-check=full ./grid_bfs --small`
