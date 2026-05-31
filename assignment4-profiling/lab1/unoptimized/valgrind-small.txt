@@ -1,0 +1,47 @@
+==20625== Memcheck, a memory error detector
+==20625== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
+==20625== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
+==20625== Command: ./grid_bfs --small
+==20625== 
+grid = 260 x 260
+open_cells = 51260
+requests = 25
+reachable = 25
+unreachable = 0
+average_distance = 219.64
+route_label_checksum = 4949398082416184235
+heatmap_total_visits = 658695
+heatmap_active_cells = 50859
+heatmap_max_visits = 25
+heatmap_threshold_checksum = 16311765582170346245
+congestion_passes = 32
+congestion_total_pressure = 455128
+congestion_max_pressure = 13
+congestion_pressure_checksum = 9526609312545789406
+time_sec = 3.5441
+==20625== 
+==20625== HEAP SUMMARY:
+==20625==     in use at exit: 8,450,000 bytes in 50 blocks
+==20625==   total heap usage: 369 allocs, 319 frees, 23,207,040 bytes allocated
+==20625== 
+==20625== 1,690,000 bytes in 25 blocks are definitely lost in loss record 1 of 2
+==20625==    at 0x4886FFC: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-arm64-linux.so)
+==20625==    by 0x10B19B: shortest_path_bfs(std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&, RouteRequest const&, std::vector<int, std::allocator<int> >&) (grid_bfs.cpp:198)
+==20625==    by 0x10B5EF: run_all_requests(std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&, std::vector<RouteRequest, std::allocator<RouteRequest> > const&, std::vector<int, std::allocator<int> >&) (grid_bfs.cpp:262)
+==20625==    by 0x10C73F: main (grid_bfs.cpp:487)
+==20625== 
+==20625== 6,760,000 bytes in 25 blocks are definitely lost in loss record 2 of 2
+==20625==    at 0x4886FFC: operator new[](unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-arm64-linux.so)
+==20625==    by 0x10B15F: shortest_path_bfs(std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&, RouteRequest const&, std::vector<int, std::allocator<int> >&) (grid_bfs.cpp:196)
+==20625==    by 0x10B5EF: run_all_requests(std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&, std::vector<RouteRequest, std::allocator<RouteRequest> > const&, std::vector<int, std::allocator<int> >&) (grid_bfs.cpp:262)
+==20625==    by 0x10C73F: main (grid_bfs.cpp:487)
+==20625== 
+==20625== LEAK SUMMARY:
+==20625==    definitely lost: 8,450,000 bytes in 50 blocks
+==20625==    indirectly lost: 0 bytes in 0 blocks
+==20625==      possibly lost: 0 bytes in 0 blocks
+==20625==    still reachable: 0 bytes in 0 blocks
+==20625==         suppressed: 0 bytes in 0 blocks
+==20625== 
+==20625== For lists of detected and suppressed errors, rerun with: -s
+==20625== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)

@@ -1,0 +1,46 @@
+==20578== Callgrind, a call-graph generating cache profiler
+==20578== Copyright (C) 2002-2017, and GNU GPL'd, by Josef Weidendorfer et al.
+==20578== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
+==20578== Command: ./grid_bfs --small
+==20578== 
+--20578-- Warning: Cannot auto-detect cache config, using defaults.
+--20578--          Run with -v to see.
+==20578== For interactive control, run 'callgrind_control -h'.
+==20578== brk segment overflow in thread #1: can't grow to 0x4887000
+==20578== (see section Limitations in user manual)
+==20578== NOTE: further instances of this message will not be shown
+grid = 260 x 260
+open_cells = 51260
+requests = 25
+reachable = 25
+unreachable = 0
+average_distance = 219.64
+route_label_checksum = 4949398082416184235
+heatmap_total_visits = 658695
+heatmap_active_cells = 50859
+heatmap_max_visits = 25
+heatmap_threshold_checksum = 16311765582170346245
+congestion_passes = 32
+congestion_total_pressure = 455128
+congestion_max_pressure = 13
+congestion_pressure_checksum = 9526609312545789406
+time_sec = 2.1285
+==20578== 
+==20578== Events    : Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+==20578== Collected : 180279835 36583568 11135306 2845 7454301 2759375 2401 398377 634565
+==20578== 
+==20578== I   refs:      180,279,835
+==20578== I1  misses:          2,845
+==20578== LLi misses:          2,401
+==20578== I1  miss rate:        0.00%
+==20578== LLi miss rate:        0.00%
+==20578== 
+==20578== D   refs:       47,718,874  (36,583,568 rd + 11,135,306 wr)
+==20578== D1  misses:     10,213,676  ( 7,454,301 rd +  2,759,375 wr)
+==20578== LLd misses:      1,032,942  (   398,377 rd +    634,565 wr)
+==20578== D1  miss rate:        21.4% (      20.4%   +       24.8%  )
+==20578== LLd miss rate:         2.2% (       1.1%   +        5.7%  )
+==20578== 
+==20578== LL refs:        10,216,521  ( 7,457,146 rd +  2,759,375 wr)
+==20578== LL misses:       1,035,343  (   400,778 rd +    634,565 wr)
+==20578== LL miss rate:          0.5% (       0.2%   +        5.7%  )

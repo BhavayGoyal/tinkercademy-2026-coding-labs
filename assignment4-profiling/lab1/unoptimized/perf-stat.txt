@@ -1,0 +1,34 @@
+grid = 260 x 260
+open_cells = 51260
+requests = 1200
+reachable = 1177
+unreachable = 23
+average_distance = 180.575
+route_label_checksum = 3703473789245134517
+heatmap_total_visits = 32914184
+heatmap_active_cells = 51041
+heatmap_max_visits = 957
+heatmap_threshold_checksum = 17645577948039157950
+congestion_passes = 4096
+congestion_total_pressure = 3719781
+congestion_max_pressure = 175
+congestion_pressure_checksum = 5595025244828244209
+time_sec = 2.15876
+
+ Performance counter stats for './grid_bfs':
+
+        4636024496      cycles                                                                  (37.39%)
+       15648945516      instructions                     #    3.38  insn per cycle              (37.24%)
+        1950569607      branches                                                                (37.43%)
+          85861013      branch-misses                    #    4.40% of all branches             (25.18%)
+        4456975235      cache-references                                                        (25.07%)
+         585684712      cache-misses                     #   13.14% of all cache refs           (25.00%)
+        4441817019      L1-dcache-loads                                                         (25.11%)
+         575169904      L1-dcache-load-misses            #   12.95% of all L1-dcache accesses   (24.97%)
+
+       2.206701249 seconds time elapsed
+
+       1.666144000 seconds user
+       0.117516000 seconds sys
+
+

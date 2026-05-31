@@ -2,17 +2,36 @@
 
 ## 1. Optimizations Made
 
-- TODO
+- **Memory leak fix + memory reduction (shortest_path_bfs):** removed the separate `visited` array and used a single `distance` vector initialized to `-1` as the visited marker. This eliminates two raw `new[]` allocations, reduces per-request memory, and fixes the leak.
 
 ## 2. Methodology Walkthrough
 
-Include before/after evidence from:
+### 1) Memory leak investigation (Valgrind)
+1. Build debug and run Memcheck:
+   `make debug && taskset -c 0 valgrind --leak-check=full ./grid_bfs --small`
+2. The report shows **definitely lost** allocations in `shortest_path_bfs` (the `distance`/`visited` buffers):
 
-- `time`
-- `perf stat`
-- FlameGraph
-- Callgrind/KCachegrind
-- Valgrind leak summary
+```
+==...== HEAP SUMMARY:
+==...==     in use at exit: 8,450,000 bytes in 50 blocks
+==...== LEAK SUMMARY:
+==...==    definitely lost: 8,450,000 bytes in 50 blocks
+==...==
+==...== 1,690,000 bytes in 25 blocks are definitely lost
+==...==    by shortest_path_bfs (grid_bfs.cpp:198)
+==...== 6,760,000 bytes in 25 blocks are definitely lost
+==...==    by shortest_path_bfs (grid_bfs.cpp:196)
+```
+
+3. Fix: remove `visited` and use `distance != -1` as the visited marker via a single `std::vector<int>`.
+4. Re-run Valgrind to verify:
+
+```
+==...== HEAP SUMMARY:
+==...==     in use at exit: 0 bytes in 0 blocks
+==...== All heap blocks were freed -- no leaks are possible
+==...== ERROR SUMMARY: 0 errors from 0 contexts
+```
 
 ## 3. Correctness Evidence
 
@@ -33,8 +52,18 @@ Answer Q1.1 through Q6.1 from the README.
 Here in this question, we ran it on just one core using taskset -c 0, so 2nd option is ruled out so in our case real time is bigger than user+sys because of waiting (I/O, scheduling, preemption) etc.
 
 
-<!-- **Q1.1:** `real` is wall-clock elapsed time, while `user` + `sys` is CPU time spent in user mode and kernel mode. They usually differ for 2 reasons.
-  - wall-clock (real) time keeps ticking during waiting (I/O, scheduling, preemption), making `real` larger
-  - Multiple threads running simultaneously on multiple cores can make CPU time exceed wall-clock (real) time because CPU time will be total time taken on all cores combined, while real time is the total wall-clock time.
-  
-Here in this question, we ran it on just one core using taskset -c 0, so 2nd option is ruled out so in our case real time is bigger than user+sys because of waiting (I/O, scheduling, preemption) etc. -->
+**Q2.1:** `perf stat` reads hardware performance counters (using PMU) while the program runs which counts the events directly like cycles, instructions, branches, cache-misses etc. Derived metrics are ratios of those counts: `insn per cycle = instructions / cycles`, `% of all branches = branch-misses / branches × 100`, and `% of all cache refs = cache-misses / cache-references × 100`.
+
+**Q2.2:** The right-side percentages (e.g., `(24.76%)`) are the fraction of time that event was actually scheduled on a hardware counter. Lower percentages mean more multiplexing. `perf` scales the raw counts up to estimate full-runtime totals. 100% means that the count is exact, and lower means it's more estimated.
+
+**Q2.3:** No. The value is an estimate, not always exact. Counters can be multiplexed and scaled, and some hardware events are imprecise due to speculation/skid and counter limitations, so the printed number is approximate. (We can use valgrind to get a much more accurate number for this)
+
+**Q3.1:** Each function call has a dedicated stack frame which keeps a track of return address, arguments and local variables. The frame pointer stores the base (or start) of that function and does not change during execution. perf -g performs stack walking. When it samples the CPU state based on freq it takes the current frame pointer, reads the return address, and thus go to the frame pointer of the callee and repeats it until it reaches the very first function. So this is how it can trace all of the function call chain.
+
+**Q3.2:** Inclusive cost (cumulative) counts time in a function **plus** all time in its callees. Self cost counts only time spent in the function body itself, excluding time in functions it calls. So Self tells us that the function is heavy and taking a  long time while inclusive tells us that the whole path is heavy.
+
+**Q4.1:** Under the thood, gprof relies on compiler instrumentation. With compilation using `-pg` like flags, the compiler injects a small hook (e.g., `mcount/__fentry__`) at the start of every function. Each call records the caller-callee pair using the return address and increments exact counters. On exit, the runtime writes these tables to `gmon.out`, which `gprof` reads to build the call graph and call counts.
+
+**Q4.2:** `perf` (and FlameGraphs) sample an optimized, inlined binary, so they show where time goes but only approximate event counts. `gprof` instruments an -O0 build, so there’s no inlining and it records exact call counts plus a clear call graph. Useful for spotting a tiny helper called a million times. If both agree on a hotspot it’s likely real. If they disagree it’s often due to inlining.
+
+**Q5.1:** Valgrind Memcheck runs on an uninstrumented debug build and does very thorough checking (leaks, invalid reads/writes, use of uninitialized memory) but is very slow. AddressSanitizer requires recompiling with `-fsanitize=address`, runs much faster, and is great for catching out‑of‑bounds and use‑after‑free during development/CI, but it’s still an approximation and can miss some leak patterns unless LeakSanitizer is enabled. Use Memcheck for deep, detailed memory debugging and leak audits and use ASan for fast feedback in normal test runs.
