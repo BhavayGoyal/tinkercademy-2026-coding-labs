@@ -16,9 +16,6 @@
 
 We first checked for memory leaks, then profiled to identify the primary hotspots. Hotspot profiling (perf/gprof) pointed to `compute_congestion_pressure`, `shortest_path_bfs`, and `next_pressure_value`, so the optimizations focus on those functions in `grid_bfs.cpp` (cache-friendly traversal in `compute_congestion_pressure`, per-request BFS setup reductions in `shortest_path_bfs`, and inner-loop overhead trimming in `next_pressure_value`).
 
-### Attempted but reverted: Bit-packed `open_cells`
-We tried bit-packing `open_cells` to 1 bit per cell. It reduced cache misses but increased total time (0.9348 s → 0.9459 s), likely because each neighbor check now needs extra shifts/masks and bit-index arithmetic, so it was reverted.
-
 ### 1) Memory leak investigation (Valgrind)
 1. Build debug and run Memcheck:
    `make debug && taskset -c 0 valgrind --leak-check=full ./grid_bfs --small`
@@ -115,13 +112,66 @@ We tried bit-packing `open_cells` to 1 bit per cell. It reduced cache misses but
 | cycles | 4,636,024,496 | 2,959,750,912 | 2,259,059,480 |
 | time elapsed | 2.2067 s | 1.2273 s | 0.845906571 s |
 
+### 8) Used O3 flag instead of O2
+1. Reason: The compiler does heavy optimizations if used this
+2. Change: Just used make optimized
+3. Result: significant improvements
+
+| Metric (perf stat) | Before (unoptimized) | -O2 (make all) | -O3 (make optimized) |
+| --- | --- | --- | --- |
+| cycles | 4,636,024,496 | 2,258,718,596 | 1,502,671,023 |
+| instructions | 15,648,945,516 | 9,312,694,362 | 4,161,956,039 |
+| branches | 1,950,569,607 | 714,936,465 | 508,064,078 |
+| branch-misses | 85,861,013 | 40,456,030 | 39,369,064 |
+| cache-misses | 585,684,712 | 28,897,885 | 28,456,221 |
+| L1-dcache-load-misses | 575,169,904 | 28,567,542 | 27,708,424 |
+| time elapsed | 2.2067 s | 0.8459 s | 0.5604 s |
+
+### Attempted but reverted: Bit-packed `open_cells`
+We tried bit-packing `open_cells` to 1 bit per cell. It reduced cache misses but increased total time (0.9348 s → 0.9459 s), likely because each neighbor check now needs extra shifts/masks and bit-index arithmetic, so it was reverted.
+
+### FlameGraphs (before/after)
+Before (unoptimized):
+![FlameGraph (unoptimized)](unoptimized/flamegraph.svg)
+
+After (latest optimized):
+![FlameGraph (latest)](flamegraph.svg)
+
 ## 3. Correctness Evidence
 
-Include:
+### `make test`
+```
+sanity check passed
+```
 
-- `make test`
-- Final normal run output
-- Checksum comparison before and after optimization
+### Final normal run output (latest optimized)
+```
+grid = 260 x 260
+open_cells = 51260
+requests = 1200
+reachable = 1177
+unreachable = 23
+average_distance = 180.575
+route_label_checksum = 3703473789245134517
+heatmap_total_visits = 32914184
+heatmap_active_cells = 51041
+heatmap_max_visits = 957
+heatmap_threshold_checksum = 17645577948039157950
+congestion_passes = 4096
+congestion_total_pressure = 3719781
+congestion_max_pressure = 175
+congestion_pressure_checksum = 5595025244828244209
+time_sec = 0.541294
+```
+
+### Checksum comparison (before vs after)
+All checksums match between the unoptimized and optimized builds:
+
+| Checksum | Before (unoptimized) | After (optimized) |
+| --- | --- | --- |
+| route_label_checksum | 3703473789245134517 | 3703473789245134517 |
+| heatmap_threshold_checksum | 17645577948039157950 | 17645577948039157950 |
+| congestion_pressure_checksum | 5595025244828244209 | 5595025244828244209 |
 
 ## 4. Conceptual Questions
 
@@ -149,3 +199,5 @@ Here in this question, we ran it on just one core using taskset -c 0, so 2nd opt
 **Q4.2:** `perf` (and FlameGraphs) sample an optimized, inlined binary, so they show where time goes but only approximate event counts. `gprof` instruments an -O0 build, so there’s no inlining and it records exact call counts plus a clear call graph. Useful for spotting a tiny helper called a million times. If both agree on a hotspot it’s likely real. If they disagree it’s often due to inlining.
 
 **Q5.1:** Valgrind Memcheck runs on an uninstrumented debug build and does very thorough checking (leaks, invalid reads/writes, use of uninitialized memory) but is very slow. AddressSanitizer requires recompiling with `-fsanitize=address`, runs much faster, and is great for catching out‑of‑bounds and use‑after‑free during development/CI, but it’s still an approximation and can miss some leak patterns unless LeakSanitizer is enabled. Use Memcheck for deep, detailed memory debugging and leak audits and use ASan for fast feedback in normal test runs.
+
+**Q6.1:** Yes, but it’s a measurement-method difference, not a contradiction. `perf`/FlameGraphs sample an optimized build and highlight `compute_congestion_pressure` and BFS as the dominant hotspots, while gprof/Callgrind (instrumented, less-optimized builds) spread more cost into small helper functions and show different proportions. The underlying hot regions agree. The differences come from instrumentation overhead and inlining/optimization changing where time is attributed.
