@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(g++ -std=c++20 -Wall -Wextra main.cpp -o main_test)",
+      "Bash(./main_test --test)",
+      "Bash(./main_test)"
+    ]
+  }
+}

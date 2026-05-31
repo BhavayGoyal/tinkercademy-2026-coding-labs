@@ -2,14 +2,13 @@
 
 ## 1. Optimizations Made
 
-- **Memory leak fix + memory reduction (shortest_path_bfs, `grid_bfs.cpp:211-268`):** removed the separate `visited` array and used a single `distance` vector initialized to `-1` as the visited marker. This eliminates two raw `new[]` allocations, reduces per-request memory, and fixes the leak.
-- **Row-major traversal in `compute_congestion_pressure` (`grid_bfs.cpp:395-415`):** swapped the inner loops to iterate row-major over the row-major `current/next` arrays and reused a row offset to reduce cache misses.
-- **Simplify arithmetic in `next_pressure_value` (`grid_bfs.cpp:358-361`):** replace divides with shifts and reduce the pulse expression modulo 16 to cut multiplies.
-- **Simplify branch structure in `next_pressure_value` (`grid_bfs.cpp:363-366`):** flip the branch so the common path falls through, reducing branch cost in the hotspot.
-- **Reuse BFS buffers across requests (`grid_bfs.cpp:277-296`):** allocate `distance` and `frontier` once in `run_all_requests` and reuse them inside `shortest_path_bfs`.
-- **Flatten BFS data access (`grid_bfs.cpp:191-268, 277-296`):** build a contiguous `open_cells` grid, use 1D indices in the frontier, and precompute neighbor offsets to reduce pointer-chasing and per-neighbor math.
-- **Shrink heatmap/congestion buffers to `uint16_t` (`grid_bfs.cpp:212-421, 493-539`):** reduce storage width for `heatmap`, congestion `current/next/source`, and their summaries while keeping distance as `int` for correctness.
-- **Enable vectorization in the congestion loop (`grid_bfs.cpp:390-414`, `Makefile:5-7`):** add `__restrict__` pointers plus vectorization pragmas, and compile perf/optimized builds with `-O3 -march=native` to let the compiler auto-vectorize the tight inner loop.
+- **Memory leak fix + memory reduction:** removed the separate `visited` array and used a single `distance` vector initialized to `-1` as the visited marker. This eliminates two raw `new[]` allocations, reduces per-request memory, and fixes the leak.
+- **Row-major traversal in `compute_congestion_pressure`:** swapped the inner loops to iterate row-major over the row-major `current/next` arrays and reused a row offset to reduce cache misses.
+- **Simplify arithmetic in `next_pressure_value`:** replace divides with shifts and reduce the pulse expression modulo 16 to cut multiplies.
+- **Simplify branch structure in `next_pressure_value`:** flip the branch so the common path falls through, reducing branch cost in the hotspot.
+- **Reuse BFS buffers across requests:** allocate `distance` and `frontier` once in `run_all_requests` and reuse them inside `shortest_path_bfs`.
+- **Flatten BFS data access:** build a contiguous `open_cells` grid, use 1D indices in the frontier, and precompute neighbor offsets to reduce pointer-chasing and per-neighbor math.
+- **Shrink heatmap/congestion buffers to `uint16_t`:** reduce storage width for `heatmap`, congestion `current/next/source`, and their summaries while keeping distance as `int` for correctness.
 - Used **-O3** flag for compilation instead of **O2**
 
 ## 2. Methodology Walkthrough
