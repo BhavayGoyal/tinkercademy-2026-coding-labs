@@ -112,7 +112,7 @@ We tried bit-packing `open_cells` to 1 bit per cell. It reduced cache misses but
 | L1-dcache-load-miss rate | 12.95% | 1.16% | 1.01% |
 | instructions | 15,648,945,516 | 11,414,720,295 | 9,361,674,842 |
 | cycles | 4,636,024,496 | 2,959,750,912 | 2,259,059,480 |
-| time elapsed | 2.2067 s | 1.2273 s | 0.843496345 s |
+| time elapsed | 2.2067 s | 1.2273 s | 0.845906571 s |
 
 ## 3. Correctness Evidence
 
