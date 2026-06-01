@@ -75,9 +75,22 @@
 // }
 
 // ─── Part 1 main ────────────────────────────────────────────────────────────
-/*
+
 int main() {
     std::cerr << "=== Part 1: stateless lambda deleter ===\n";
+
+    auto closer = [] (FILE* f) {
+        if (f) {
+            std::fclose(f);
+            std::cerr << "fclose called on " << f << "\n";
+        }
+    };
+    using FilePtr = std::unique_ptr<FILE, decltype(closer)>;
+    auto open_file = [&closer] (const char* path, const char* mode) -> FilePtr {
+        FILE* raw = std::fopen(path, mode);
+        if (!raw) throw std::runtime_error("fopen failed");
+        return FilePtr(raw, closer);
+    };
 
     // Predict: how many "fclose called on ..." lines will print?
     {
@@ -104,7 +117,7 @@ int main() {
 
     return 0;
 }
-*/
+
 
 // =============================================================================
 // PART 2 — Stateful counting functor deleter

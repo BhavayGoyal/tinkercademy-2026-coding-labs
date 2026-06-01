@@ -77,12 +77,11 @@ static void risky_work(int x) {
 }
 
 void process_data(int x) {
-    Resource* r = new Resource("process_data", x);
+    auto r = std::make_unique<Resource>("process_data", x);
 
     risky_work(x);
 
     r->describe();
-    delete r; 
 }
 
 // =============================================================================
@@ -96,7 +95,7 @@ struct Subscriber;
 
 struct Publisher {
     int id_;
-    std::shared_ptr<Subscriber> subscriber_; 
+    std::weak_ptr<Subscriber> subscriber_;
 
     explicit Publisher(int id) : id_(id) {
         std::cerr << "[Publisher  #" << id_ << "] born\n";
@@ -138,15 +137,15 @@ void run_pubsub() {
 // Note: ASan won't catch this one — it's not a memory error, it's a logic
 // error. The log will show the resource dying at the wrong time.
 // =============================================================================
-void print_resource(std::unique_ptr<Resource> r) { 
+void print_resource(const Resource& r) {
     std::cerr << "  print_resource: ";
-    r->describe();
+    r.describe();
 }
 
 void use_resource() {
     auto r = std::make_unique<Resource>("use_resource", 77);
 
-    print_resource(std::move(r)); 
+    print_resource(*r);
 
     // What's the value of r now?
     std::cerr << "  back in use_resource, value=" << r->value_ << "\n"; 
