@@ -168,6 +168,19 @@ static std::vector<uint16_t> build_dependency_sums(
     return sums;
 }
 
+// remove this function and replace with precomputed sums in build_dependency_sums
+// static int chase_dependency(int start, int steps, const std::vector<int>& next, const std::vector<int>& value) {
+//     int idx = start & ((int)next.size() - 1);
+//     int total = 0;
+
+//     for (int i = 0; i < steps; ++i) {
+//         idx = next[idx];
+//         total += value[idx];
+//     }
+
+//     return total;
+// }
+
 static int cold_column_probe(const std::vector<int>& history, int rows, int cols, int seed) {
     int sum = 0;
     (void)seed;
