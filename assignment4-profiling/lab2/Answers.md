@@ -11,7 +11,6 @@ Baseline output (`history_cols = 2048`): `6745589558`
 |---|---|---|---|---|
 | perf | `-O2 -g -fno-inline -fno-omit-frame-pointer` | `perf record -F 999 -g -- taskset -c 0 bash -c 'for i in {1..50}; do ./main_ni >/dev/null; done'` | Function-level hotspots | `perf report --stdio` |
 | perf stat | `-O2 -g` | `taskset -c 0 perf stat -r 5 -e cycles,instructions,branches,branch-misses,cache-references,cache-misses,L1-dcache-loads,L1-dcache-load-misses ./main` | Branch/cache counters | output below |
-| gprof | `-O0 -pg` | `g++ -O0 -g -pg main.cpp -o main_pg && ./main_pg && gprof ./main_pg gmon.out` | Call counts and flat profile | output below |
 | flamegraph | `-O2 -g -fno-inline` | `perf script | stackcollapse-perf.pl | flamegraph.pl` | Visual hotspot check | `flamegraph.svg` |
 
 ### Baseline hotspot summary (history_cols = 128)
