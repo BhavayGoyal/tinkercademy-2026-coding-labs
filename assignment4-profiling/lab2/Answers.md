@@ -291,7 +291,7 @@ Output after optimizations: `6040578838` (128 cols), `6745589558` (2048 cols)
 
 4. **Build size trade-off**: Branchless code adds instructions and sometimes increases L1 miss rate, but reduces branch misses. At this scale, branch misses are rare and the cost of extra instructions is small.
 
-5. **Prefetch distance**: A distance of 32 packets proved optimal for the 220k-packet workload; smaller distances (4, 8, 16) showed less benefit.
+5. **Prefetch distance**: A  distance of 32 packets proved optimal for the 220k-packet workload; smaller distances (4, 8, 16) showed less benefit.
 
 ## Section 6: Final Notes
 
