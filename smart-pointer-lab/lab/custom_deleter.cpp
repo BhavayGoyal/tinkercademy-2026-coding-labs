@@ -81,8 +81,8 @@ int main() {
 
     auto closer = [] (FILE* f) {
         if (f) {
-            std::fclose(f);
             std::cerr << "fclose called on " << f << "\n";
+            std::fclose(f);
         }
     };
     using FilePtr = std::unique_ptr<FILE, decltype(closer)>;
