@@ -59,65 +59,49 @@
 //      PREDICT before running: how does it compare to sizeof(FILE*)?
 // =============================================================================
 
-// TODO Part 1.1: define the lambda. It should be a non-capturing lambda that
-//                accepts a FILE* and calls std::fclose if the pointer is non-null.
-//                Log something like "fclose called on " + the FILE* address to cerr.
-// auto closer = [] (FILE* f) { ... };
-
-// TODO Part 1.2: define the using-alias.
-// using FilePtr = std::unique_ptr<FILE, decltype(closer)>;
-
-// TODO Part 1.3: implement the factory.
-// FilePtr open_file(const char* path, const char* mode) {
-//     FILE* raw = std::fopen(path, mode);
-//     if (!raw) throw std::runtime_error("fopen failed");
-//     return FilePtr(raw, closer);
-// }
-
 // ─── Part 1 main ────────────────────────────────────────────────────────────
 
-int main() {
-    std::cerr << "=== Part 1: stateless lambda deleter ===\n";
+// int main() {
+//     std::cerr << "=== Part 1: stateless lambda deleter ===\n";
 
-    auto closer = [] (FILE* f) {
-        if (f) {
-            std::cerr << "fclose called on " << f << "\n";
-            std::fclose(f);
-        }
-    };
-    using FilePtr = std::unique_ptr<FILE, decltype(closer)>;
-    auto open_file = [&closer] (const char* path, const char* mode) -> FilePtr {
-        FILE* raw = std::fopen(path, mode);
-        if (!raw) throw std::runtime_error("fopen failed");
-        return FilePtr(raw, closer);
-    };
+//     auto closer = [] (FILE* f) {
+//         if (f) {
+//             std::cerr << "fclose called on " << f << "\n";
+//             std::fclose(f);
+//         }
+//     };
+//     using FilePtr = std::unique_ptr<FILE, decltype(closer)>;
+//     auto open_file = [&closer] (const char* path, const char* mode) -> FilePtr {
+//         FILE* raw = std::fopen(path, mode);
+//         if (!raw) throw std::runtime_error("fopen failed");
+//         return FilePtr(raw, closer);
+//     };
 
-    // Predict: how many "fclose called on ..." lines will print?
-    {
-        FilePtr f = open_file("/tmp/raii_demo.txt", "w");
-        std::fputs("hello, RAII\n", f.get());
-        // f goes out of scope here — fclose should run automatically.
-    }
+//     // Predict: how many "fclose called on ..." lines will print?
+//     {
+//         FilePtr f = open_file("/tmp/raii_demo.txt", "w");
+//         std::fputs("hello, RAII\n", f.get());
+//         // f goes out of scope here — fclose should run automatically.
+//     }
 
-    // Exception path: confirm the file still gets closed.
-    std::cerr << "\n-- exception path --\n";
-    try {
-        FilePtr f = open_file("/tmp/raii_demo.txt", "w");
-        std::fputs("about to throw\n", f.get());
-        throw std::runtime_error("simulated failure");
-    } catch (const std::exception& e) {
-        std::cerr << "caught: " << e.what() << "\n";
-    }
+//     // Exception path: confirm the file still gets closed.
+//     std::cerr << "\n-- exception path --\n";
+//     try {
+//         FilePtr f = open_file("/tmp/raii_demo.txt", "w");
+//         std::fputs("about to throw\n", f.get());
+//         throw std::runtime_error("simulated failure");
+//     } catch (const std::exception& e) {
+//         std::cerr << "caught: " << e.what() << "\n";
+//     }
 
-    // Size check — what do you predict?
-    std::cerr << "\nsizeof(FILE*)   = " << sizeof(FILE*) << "\n";
-    std::cerr << "sizeof(FilePtr) = " << sizeof(FilePtr) << "\n";
-    // EXPECTED: equal. Stateless lambdas are empty types; the compiler uses
-    // empty-base-optimization so the deleter takes 0 bytes inside the unique_ptr.
+//     // Size check — what do you predict?
+//     std::cerr << "\nsizeof(FILE*)   = " << sizeof(FILE*) << "\n";
+//     std::cerr << "sizeof(FilePtr) = " << sizeof(FilePtr) << "\n";
+//     // EXPECTED: equal. Stateless lambdas are empty types; the compiler uses
+//     // empty-base-optimization so the deleter takes 0 bytes inside the unique_ptr.
 
-    return 0;
-}
-
+//     return 0;
+// }
 
 // =============================================================================
 // PART 2 — Stateful counting functor deleter
@@ -143,31 +127,26 @@ int main() {
 //      PREDICT before running: how does it compare to sizeof(FilePtr) from Part 1?
 // =============================================================================
 
-// TODO Part 2.1: define the functor.
-// struct CountingFileCloser {
-//     int* close_count;
-//     void operator()(FILE* f) const {
-//         if (f) {
-//             std::fclose(f);
-//             ++*close_count;
-//             std::cerr << "fclose #" << *close_count << " on " << f << "\n";
-//         }
-//     }
-// };
+struct CountingFileCloser {
+    int* close_count;
+    void operator()(FILE* f) const {
+        if (f) {
+            std::fclose(f);
+            ++*close_count;
+            std::cerr << "fclose #" << *close_count << " on " << f << "\n";
+        }
+    }
+};
 
-// TODO Part 2.2: define the using-alias.
-// using CountedFilePtr = std::unique_ptr<FILE, CountingFileCloser>;
+using CountedFilePtr = std::unique_ptr<FILE, CountingFileCloser>;
 
-// TODO Part 2.3: implement the factory. The deleter instance must be constructed
-//                with a pointer to the caller's counter.
-// CountedFilePtr open_counted(const char* path, const char* mode, int& counter) {
-//     FILE* raw = std::fopen(path, mode);
-//     if (!raw) throw std::runtime_error("fopen failed");
-//     return CountedFilePtr(raw, CountingFileCloser{&counter});
-// }
+CountedFilePtr open_counted(const char* path, const char* mode, int& counter) {
+    FILE* raw = std::fopen(path, mode);
+    if (!raw) throw std::runtime_error("fopen failed");
+    return CountedFilePtr(raw, CountingFileCloser{&counter});
+}
 
 // ─── Part 2 main ────────────────────────────────────────────────────────────
-/*
 int main() {
     std::cerr << "=== Part 2: stateful counting deleter ===\n";
 
@@ -198,7 +177,6 @@ int main() {
 
     return 0;
 }
-*/
 
 // =============================================================================
 // EXPECTED OUTPUT (after both parts are uncommented and the TODOs are filled in)
