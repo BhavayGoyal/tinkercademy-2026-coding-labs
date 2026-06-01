@@ -1,5 +1,4 @@
 #include <cstddef>
-#include <cstdint>
 #include <iostream>
 #include <utility>
 #include <vector>
@@ -8,15 +7,13 @@
 #define STEPS 7
 
 struct Packet {
+    int device_id;
+    int lane;
+    int reading;
+    int quality;
+    int kind;
     int stamp;
-    uint16_t device_id;
-    uint16_t reading;
-    uint8_t lane;
-    uint8_t quality;
-    uint8_t kind;
-    uint8_t _pad;
 };
-static_assert(sizeof(Packet) == 12, "Packet should be 12 bytes");
 
 static unsigned int mix32(unsigned int x) {
     x ^= x >> 16;
@@ -76,8 +73,8 @@ static std::vector<int> build_dependency_next(int n) {
     return next;
 }
 
-static std::vector<uint16_t> build_dependency_value(int n) {
-    std::vector<uint16_t> value(n);
+static std::vector<int> build_dependency_value(int n) {
+    std::vector<int> value(n);
     for (int i = 0; i < n; ++i) {
         value[i] = (mix32(i * 91U + 17U) & 1023);
     }
@@ -94,86 +91,86 @@ static std::vector<uint16_t> build_dependency_value(int n) {
 
 static void refresh_history(std::vector<int>& history, const std::vector<Packet>& packets, int history_cols) {
     int rows = (int)history.size() / history_cols;
-    constexpr std::size_t prefetch_distance = 32;
 
     for (std::size_t i = 0; i < packets.size(); ++i) {
-        if (i + prefetch_distance < packets.size()) {
-            const Packet& fp = packets[i + prefetch_distance];
-            int fidx = fp.device_id * history_cols + (fp.stamp % history_cols);
-            __builtin_prefetch(&history[fidx], 1, 1);
-        }
         const Packet& p = packets[i];
         int idx = p.device_id * history_cols + (p.stamp % history_cols);
         history[idx] = (history[idx] + p.reading + p.quality) & 2047;
     }
 
-    if (history_cols >= 2048) {
-        for (int r = 0; r < rows; ++r) {
-            int row_start = r * history_cols;
-            int carry = history[row_start];
-            for (int c = 1; c < history_cols; ++c) {
-                carry = carry + history[row_start + c];
-                history[row_start + c] = carry;
-            }
-            for (int c = 0; c < history_cols; ++c) {
-                history[row_start + c] &= 2047;
-            }
-        }
-    } else {
-        for (int r = 0; r < rows; ++r) {
-            int row_start = r * history_cols;
-            int carry = history[row_start];
-            for (int c = 1; c < history_cols; ++c) {
-                carry = (carry + history[row_start + c]) & 2047;
-                history[row_start + c] = carry;
-            }
+    for (int r = 0; r < rows; ++r) {
+        int row_start = r * history_cols;
+        int carry = history[row_start];
+        for (int c = 1; c < history_cols; ++c) {
+            carry = (carry + history[row_start + c]) & 2047;
+            history[row_start + c] = carry;
         }
     }
 }
 
 static int branchy_score(const Packet& p, const std::vector<int>& lane_weight) {
-    auto select = [](int cond, int on_true, int on_false) {
-        int mask = -cond;
-        return (mask & on_true) | (~mask & on_false);
-    };
-
     int score = p.reading + lane_weight[p.lane];
     int x = p.reading ^ (p.quality << 2) ^ (p.kind * 97);
+        if (x & 1) {
+        score += 19;
+    } else {
+        score -= 7;
+    }
 
-    score += select(x & 1, 19, -7);
-    score = select((x >> 1) & 1, score ^ p.quality, score + p.kind * 3);
-    score += select((x >> 2) & 1, p.reading >> 2, -(p.quality >> 3));
-    score = select((x >> 3) & 1, score ^ p.device_id, score + p.lane * 5);
-    score += select((x >> 4) & 1, 31, -11);
-    score = select((x >> 5) & 1, score ^ (p.reading << 1), score + (p.quality & 15));
+    if (x & 2) {
+        score ^= p.quality;
+    } else {
+        score += p.kind * 3;
+    }
+
+    if (x & 4) {
+        score += p.reading >> 2;
+    } else {
+        score -= p.quality >> 3;
+    }
+
+    if (x & 8) {
+        score ^= p.device_id;
+    } else {
+        score += p.lane * 5;
+    }
+
+    if (x & 16) {
+        score += 31;
+    } else {
+        score -= 11;
+    }
+
+    if (x & 32) {
+        score ^= (p.reading << 1);
+    } else {
+        score += (p.quality & 15);
+    }
 
     return score & 4095;
 }
 
-static std::vector<uint16_t> build_dependency_sums(
-    const std::vector<int>& next,
-    const std::vector<uint16_t>& value,
-    int steps
-) {
-    std::vector<uint16_t> sums(next.size());
-    for (std::size_t start = 0; start < next.size(); ++start) {
-        int idx = static_cast<int>(start);
-        int total = 0;
-        for (int i = 0; i < steps; ++i) {
-            idx = next[idx];
-            total += value[idx];
-        }
-        sums[start] = (uint16_t)total;
+static int chase_dependency(int start, int steps, const std::vector<int>& next, const std::vector<int>& value) {
+    int idx = start & ((int)next.size() - 1);
+    int total = 0;
+
+    for (int i = 0; i < steps; ++i) {
+        idx = next[idx];
+        total += value[idx];
     }
-    return sums;
+
+    return total;
 }
 
 static int cold_column_probe(const std::vector<int>& history, int rows, int cols, int seed) {
     int sum = 0;
-    (void)seed;
-    int total = rows * cols;
-    for (int i = 0; i < total; ++i) {
-        sum += history[i] & 31;
+    int start_col = seed % cols;
+
+    for (int offset = 0; offset < cols; ++offset) {
+        int col = (start_col + offset) % cols;
+        for (int row = 0; row < rows; ++row) {
+            sum += history[row * cols + col] & 31;
+        }
     }
 
     return sum;
@@ -182,19 +179,20 @@ static int cold_column_probe(const std::vector<int>& history, int rows, int cols
 static long long process_packets(
     const std::vector<Packet>& packets,
     const std::vector<int>& lane_weight,
-    const std::vector<uint16_t>& dependency_sums
+    const std::vector<int>& dependency_next,
+    const std::vector<int>& dependency_value
 ) {
     long long total = 0;
-    int mask = (int)dependency_sums.size() - 1;
 
     for (std::size_t i = 0; i < packets.size(); ++i) {
         const Packet& p = packets[i];
         int score = branchy_score(p, lane_weight);
-        int cond = ((score ^ p.quality) & 7) != 0;
-        int dep = dependency_sums[(score + p.device_id) & mask];
-        int lane = lane_weight[p.lane];
-        int m = -cond;
-        score += (m & dep) | (~m & lane);
+
+        if ((score ^ p.quality) & 7) {
+            score += chase_dependency(score + p.device_id, STEPS, dependency_next, dependency_value);
+        } else {
+            score += lane_weight[p.lane];
+        }
 
         total += score;
     }
@@ -205,7 +203,8 @@ static long long process_packets(
 static long long run_epoch(
     std::vector<Packet>& packets,
     const std::vector<int>& lane_weight,
-    const std::vector<uint16_t>& dependency_sums,
+    const std::vector<int>& dependency_next,
+    const std::vector<int>& dependency_value,
     std::vector<int>& history,
     int history_cols
 ) {
@@ -214,7 +213,8 @@ static long long run_epoch(
     long long total = process_packets(
         packets,
         lane_weight,
-        dependency_sums
+        dependency_next,
+        dependency_value
     );
 
     int rows = (int)history.size() / history_cols;
@@ -236,12 +236,7 @@ int main() {
     std::vector<Packet> packets = build_packets(packet_count, device_count, lane_count);
     std::vector<int> lane_weight = build_lane_weight(lane_count);
     std::vector<int> dependency_next = build_dependency_next(dependency_count);
-    std::vector<uint16_t> dependency_value = build_dependency_value(dependency_count);
-    std::vector<uint16_t> dependency_sums = build_dependency_sums(
-        dependency_next,
-        dependency_value,
-        STEPS
-    );
+    std::vector<int> dependency_value = build_dependency_value(dependency_count);
     std::vector<int> history(device_count * history_cols, 0);
 
     long long answer = 0;
@@ -249,7 +244,8 @@ int main() {
         answer += run_epoch(
             packets,
             lane_weight,
-            dependency_sums,
+            dependency_next,
+            dependency_value,
             history,
             history_cols
         );
