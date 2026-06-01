@@ -7,20 +7,16 @@ Baseline output (`history_cols = 2048`): `6745589558`
 
 ### Tools used
 
-| Tool | Build flags | Command | Purpose | Evidence |
-|---|---|---|---|---|
-| perf | `-O2 -g -fno-inline -fno-omit-frame-pointer` | `perf record -F 999 -g -- taskset -c 0 bash -c 'for i in {1..50}; do ./main_ni >/dev/null; done'` | Function-level hotspots | `perf report --stdio` |
-| perf stat | `-O2 -g` | `taskset -c 0 perf stat -r 5 -e cycles,instructions,branches,branch-misses,cache-references,cache-misses,L1-dcache-loads,L1-dcache-load-misses ./main` | Branch/cache counters | output below |
-| flamegraph | `-O2 -g -fno-inline` | `perf script | stackcollapse-perf.pl | flamegraph.pl` | Visual hotspot check | `flamegraph.svg` |
+I used perf, perf stat and flamegraphs to find the hotspots.
 
 ### Baseline hotspot summary (history_cols = 128)
 
 | Function | Self time % | Evidence |
 |---|---|---|
-| `chase_dependency` | ~70% | perf report (no-inline) |
-| `refresh_history` | ~10% | perf report (no-inline) |
-| `cold_column_probe` | ~5% | perf report (no-inline) |
-| `branchy_score` | ~3% | perf report (no-inline) |
+| `chase_dependency` | 69.19% | perf report (no-inline) |
+| `refresh_history` | 10.23% | perf report (no-inline) |
+| `cold_column_probe` | 4.46% | perf report (no-inline) |
+| `branchy_score` | 2.13% | perf report (no-inline) |
 
 ## Section 2: Optimizations (history_cols = 128)
 
@@ -231,41 +227,7 @@ Baseline output (`history_cols = 2048`): `6745589558`
 
 Output after optimizations: `6040578838` (128 cols), `6745589558` (2048 cols)
 
-## Section 3: Flamegraph Comparison
-
-### Before Optimizations (Baseline)
-
-![Flamegraph Before](flamegraph_before.svg)
-
-**Key observations:**
-- `chase_dependency` dominates at ~70% of total time (huge red block)
-- `refresh_history` is visible at ~10%
-- `cold_column_probe` and `branchy_score` are smaller contributors
-- The profile is heavily skewed toward a single hotspot
-- Random pointer chasing in `chase_dependency` is clearly visible as a major performance bottleneck
-
-### After All 7 Optimizations
-
-![Flamegraph After](flamegraph_after.svg)
-
-**Key observations:**
-- **Flattened profile:** No single function dominates anymore
-- Work is distributed across `process_packets`, `refresh_history`, `cold_column_probe`, `branchy_score`
-- `chase_dependency` is nearly eliminated (replaced by `dependency_sums` array lookup in `process_packets`)
-- The width of each function block is proportional to execution time
-- Branchless code (`pick`, mask selects) adds some instruction overhead but reduces mispredicts
-- Memory-intensive loops now benefit from sequential access patterns and smaller cache footprint
-
-**Comparative analysis:**
-| Aspect | Before | After | Improvement |
-|---|---|---|---|
-| Dominant hotspot | `chase_dependency` 70% | No single dominant function | Flattened |
-| Tallest stack | 7-hop random walks | Sequential memory access + lookup | Better CPU pipeline utilization |
-| Cache behavior | Poor L1 utilization (45% miss rate) | Good L1 utilization (22% miss rate) | 2x fewer cache misses |
-| Branch misses | High (704k baseline) | Low (15.7k after all steps) | 44x reduction |
-| Total time | 0.0819s | 0.0384s | 2.13x faster |
-
-## Section 4: Summary of All Optimizations
+## Section 3: Summary of All Optimizations
 
 | Step | Optimization | 128 cols speedup | 2048 cols speedup | Why it works |
 |---|---|---|---|---|
@@ -281,7 +243,7 @@ Output after optimizations: `6040578838` (128 cols), `6745589558` (2048 cols)
 - **128 cols:** 0.0819 s → 0.0384 s = **2.13x faster**
 - **2048 cols:** 0.4015 s → 0.1092 s = **3.68x faster**
 
-## Section 5: Key Insights
+## Section 4: Key Insights
 
 1. **Memory-bound workload**: The largest wins come from memory optimization (loop interchange: 3.6x at 2048), not branch elimination (branchless: ~0% improvement).
 
@@ -291,9 +253,68 @@ Output after optimizations: `6040578838` (128 cols), `6745589558` (2048 cols)
 
 4. **Build size trade-off**: Branchless code adds instructions and sometimes increases L1 miss rate, but reduces branch misses. At this scale, branch misses are rare and the cost of extra instructions is small.
 
-5. **Prefetch distance**: A  distance of 32 packets proved optimal for the 220k-packet workload; smaller distances (4, 8, 16) showed less benefit.
+5. **Prefetch distance**: A distance of 32 packets proved optimal for the 220k-packet workload; smaller distances (4, 8, 16) showed less benefit.
 
-## Section 6: Final Notes
+## Section 5: Final Notes
+
+- Final output (`history_cols = 128`): `6040578838`  
+- Final output (`history_cols = 2048`): `6745589558`
+- Outputs match the baseline for both `history_cols` values verifying it's still correct.
+
+---
+
+## Section 6: Updated profiling run (main_old.cpp vs main.cpp)
+
+### Methodology (updated)
+
+**Build flags:** `-O2 -g -fno-omit-frame-pointer`  
+**CPU pinning:** `taskset -c 0`  
+**Longer benchmarks:** `perf stat -r 10` (10 runs)  
+**Hotspot collection:** `perf record --call-graph dwarf -F 999` on a 50-iteration loop
+
+### Perf stat (main_old.cpp, history_cols = 2048)
+
+```text
+Performance counter stats for './main_old' (history_cols = 2048, 10 runs):
+
+     772333406      cycles                                                                  ( +-  0.12% )  (38.39%)
+     816368246      instructions                     #    1.06  insn per cycle              ( +-  1.45% )  (37.73%)
+     132777719      branches                                                                ( +-  1.81% )  (36.85%)
+       1000784      branch-misses                    #    0.75% of all branches             ( +-  6.64% )  (24.87%)
+     208933326      cache-references                                                        ( +-  1.52% )  (24.61%)
+      67946374      cache-misses                     #   32.52% of all cache refs           ( +-  1.49% )  (24.51%)
+     186301679      L1-dcache-loads                                                         ( +-  3.66% )  (25.31%)
+      69273935      L1-dcache-load-misses            #   37.18% of all L1-dcache accesses   ( +-  1.40% )  (26.12%)
+
+        0.3925 +- 0.0183 seconds time elapsed  ( +-  4.67% )
+```
+
+### Perf stat (main.cpp, history_cols = 2048)
+
+```text
+Performance counter stats for './main' (history_cols = 2048, 10 runs):
+
+     193738140      cycles                                                                  ( +-  0.63% )  (37.43%)
+     586793274      instructions                     #    3.03  insn per cycle              ( +-  1.49% )  (39.20%)
+      89865463      branches                                                                ( +-  1.98% )  (39.18%)
+         66450      branch-misses                    #    0.07% of all branches             ( +-  7.08% )  (24.45%)
+     187431073      cache-references                                                        ( +-  3.91% )  (24.40%)
+       7268580      cache-misses                     #    3.88% of all cache refs           ( +-  9.00% )  (24.76%)
+     188129469      L1-dcache-loads                                                         ( +-  2.15% )  (24.15%)
+       9008482      L1-dcache-load-misses            #    4.79% of all L1-dcache accesses   ( +-  6.39% )  (23.86%)
+
+       0.08643 +- 0.00512 seconds time elapsed  ( +-  5.92% )
+```
+
+### Flamegraphs (no extra observations)
+
+#### main_old.cpp
+![Flamegraph main_old](flamegraph_main_old.svg)
+
+#### main.cpp
+![Flamegraph main](flamegraph_main.svg)
+
+## Section 7: Final Notes
 
 - Final output (`history_cols = 128`): `6040578838`  
 - Final output (`history_cols = 2048`): `6745589558`
