@@ -200,12 +200,6 @@ int main() {
 }
 */
 
-// ─── Placeholder main — uncomment Part 1 or Part 2 above ────────────────────
-int main() {
-    std::cerr << "Uncomment Part 1 or Part 2 main() and recompile.\n";
-    return 0;
-}
-
 // =============================================================================
 // EXPECTED OUTPUT (after both parts are uncommented and the TODOs are filled in)
 //
