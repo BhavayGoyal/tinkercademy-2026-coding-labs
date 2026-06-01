@@ -31,7 +31,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 struct Node {
     int id_;
-    std::shared_ptr<Node> next_; 
+    std::weak_ptr<Node> next_; 
 
     explicit Node(int id) : id_(id) {
         std::cerr << "[Node #" << id_ << "] born\n";
@@ -65,7 +65,7 @@ int main() {
     // ── What you should see after fixing ──────────────────────────────────
     // [Node #1] born
     // [Node #2] born
-    // a.use_count=2  b.use_count=2
+    // a.use_count=1  b.use_count=1
     // [Node #2] destroyed      ← only after fix
     // [Node #1] destroyed      ← only after fix
     // -- end of scope reached --
@@ -135,4 +135,3 @@ struct Trader {
 // "I keep the next node alive." The local variables a and b are the owners.
 // weak_ptr models "I can see it, but I don't hold it."
 // =============================================================================
-
