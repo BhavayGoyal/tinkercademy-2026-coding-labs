@@ -295,7 +295,6 @@ Output after optimizations: `6040578838` (128 cols), `6745589558` (2048 cols)
 
 ## Section 6: Final Notes
 
-- Outputs match the baseline for both `history_cols` values.
-- All type conversions are safe; max values in history (2047), reading (1023), device_id (4095), lane/quality/kind (31/255/7) fit in their new types.
-- The Packet struct is reordered for alignment: `int stamp` (4 bytes), `uint16_t device_id` (2), `uint16_t reading` (2), `uint8_t lane` (1), `uint8_t quality` (1), `uint8_t kind` (1), padding (1) = 12 bytes total.
-- Further optimization would require algorithmic changes (e.g., prefetching multiple indices at once, SIMD vectorization of the carry scan) or reducing problem size.
+- Final output (`history_cols = 128`): `6040578838`  
+- Final output (`history_cols = 2048`): `6745589558`
+- Outputs match the baseline for both `history_cols` values verifying it's still correct.
