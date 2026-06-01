@@ -22,92 +22,92 @@ static int next_id() {
     return ++counter;
 }
 
-// =============================================================================
-// STAGE 1 — Implement Tracker<T> using a raw pointer.
-//
-// Your tasks:
-//   1. Fill in the constructor:  allocate a T on the heap, assign id_, log "[id] born".
-//   2. Fill in the destructor:   delete the pointer, log "[id] destroyed".
-//   3. Fill in the copy constructor:  deep-copy, log "[new_id] copied from [src_id]".
-//   4. Fill in copy assignment (operator=): deep-copy, handle self-assignment, log.
-//   5. Implement get() to return a reference to the stored T.
-//
-// Rule of Three: if you write any one of {destructor, copy ctor, copy assign},
-// you need to write all three. Here you'll write all three by hand.
-// =============================================================================
-template <typename T>
-class Tracker {
-private:
-    int id_;
-    T* data_;
-public:
-    explicit Tracker(T value) : id_(next_id()), data_(new T(value)) {
-        std::cerr << id_ << " born\n";
-    }
+// // =============================================================================
+// // STAGE 1 — Implement Tracker<T> using a raw pointer.
+// //
+// // Your tasks:
+// //   1. Fill in the constructor:  allocate a T on the heap, assign id_, log "[id] born".
+// //   2. Fill in the destructor:   delete the pointer, log "[id] destroyed".
+// //   3. Fill in the copy constructor:  deep-copy, log "[new_id] copied from [src_id]".
+// //   4. Fill in copy assignment (operator=): deep-copy, handle self-assignment, log.
+// //   5. Implement get() to return a reference to the stored T.
+// //
+// // Rule of Three: if you write any one of {destructor, copy ctor, copy assign},
+// // you need to write all three. Here you'll write all three by hand.
+// // =============================================================================
+// template <typename T>
+// class Tracker {
+// private:
+//     int id_;
+//     T* data_;
+// public:
+//     explicit Tracker(T value) : id_(next_id()), data_(new T(value)) {
+//         std::cerr << id_ << " born\n";
+//     }
 
-    ~Tracker() noexcept {
-        delete data_;
-        std::cerr << id_ << " destroyed\n";
-    }
+//     ~Tracker() noexcept {
+//         delete data_;
+//         std::cerr << id_ << " destroyed\n";
+//     }
 
-    Tracker(const Tracker& other) : id_(next_id()), data_(new T(*other.data_)) {
-        std::cerr << id_ << " copied from " << other.id_ << "\n";
-    }
+//     Tracker(const Tracker& other) : id_(next_id()), data_(new T(*other.data_)) {
+//         std::cerr << id_ << " copied from " << other.id_ << "\n";
+//     }
 
-    Tracker& operator=(const Tracker& other) {
-        if (this == &other) return *this;  // guard against self-assignment
-        T* new_data = new T(*other.data_);
-        delete data_;
-        data_ = new_data;
-        std::cerr << id_ << " assigned from " << other.id_ << "\n";
-        return *this;
-    }
+//     Tracker& operator=(const Tracker& other) {
+//         if (this == &other) return *this;  // guard against self-assignment
+//         T* new_data = new T(*other.data_);
+//         delete data_;
+//         data_ = new_data;
+//         std::cerr << id_ << " assigned from " << other.id_ << "\n";
+//         return *this;
+//     }
 
-    T& get() {
-        return *data_;
-    }
+//     T& get() {
+//         return *data_;
+//     }
 
-    const T& get() const {
-        return *data_;
-    }
-};
+//     const T& get() const {
+//         return *data_;
+//     }
+// };
 
-// ─── Stage 1 main ─────────────────────────────────────────────────────────────
-// Uncomment this block for Stage 1. Comment it out before Stage 2.
+// // ─── Stage 1 main ─────────────────────────────────────────────────────────────
+// // Uncomment this block for Stage 1. Comment it out before Stage 2.
 
-int main() {
-    std::cerr << "=== Stage 1: raw pointer Tracker ===\n";
+// int main() {
+//     std::cerr << "=== Stage 1: raw pointer Tracker ===\n";
 
-    // Predict the log before running:
-    //   How many "born" lines?  How many "destroyed" lines?
-    {
-        Tracker<int> a(10);
-        Tracker<int> b(20);
-        Tracker<int> c = a;   // copy constructor
+//     // Predict the log before running:
+//     //   How many "born" lines?  How many "destroyed" lines?
+//     {
+//         Tracker<int> a(10);
+//         Tracker<int> b(20);
+//         Tracker<int> c = a;   // copy constructor
 
-        std::cerr << "a=" << a.get() << " b=" << b.get() << " c=" << c.get() << "\n";
-    } // a, b, c destroyed here
+//         std::cerr << "a=" << a.get() << " b=" << b.get() << " c=" << c.get() << "\n";
+//     } // a, b, c destroyed here
 
-    std::cerr << "\n--- vector reallocation test ---\n";
-    // Watch what happens when the vector resizes: it copies elements.
-    // Count "born", "copied from", and "destroyed" lines.
-    {
-        std::vector<Tracker<int>> v;
-        v.push_back(Tracker<int>(1));
-        v.push_back(Tracker<int>(2));
-        v.push_back(Tracker<int>(3));
-        std::cerr << "vector holds " << v.size() << " trackers\n";
-    }
+//     std::cerr << "\n--- vector reallocation test ---\n";
+//     // Watch what happens when the vector resizes: it copies elements.
+//     // Count "born", "copied from", and "destroyed" lines.
+//     {
+//         std::vector<Tracker<int>> v;
+//         v.push_back(Tracker<int>(1));
+//         v.push_back(Tracker<int>(2));
+//         v.push_back(Tracker<int>(3));
+//         std::cerr << "vector holds " << v.size() << " trackers\n";
+//     }
 
-    std::cerr << "\n--- self-assignment test ---\n";
-    {
-        Tracker<int> x(99);
-        x = x;  // self-assignment: what goes wrong if you don't guard?
-        std::cerr << "x=" << x.get() << "\n";
-    }
+//     std::cerr << "\n--- self-assignment test ---\n";
+//     {
+//         Tracker<int> x(99);
+//         x = x;  // self-assignment: what goes wrong if you don't guard?
+//         std::cerr << "x=" << x.get() << "\n";
+//     }
 
-    return 0;
-}
+//     return 0;
+// }
 
 
 // =============================================================================
@@ -124,9 +124,44 @@ int main() {
 // Key insight: by using a move-only member, the class *becomes* move-only,
 // which is correct — exclusive ownership means no copies.
 // =============================================================================
+template <typename T>
+class Tracker {
+private:
+    int id_;
+    std::unique_ptr<T> data_;
+public:
+    explicit Tracker(T value) : id_(next_id()), data_(std::make_unique<T>(value)) {
+        std::cerr << id_ << " born\n";
+    }
 
+    ~Tracker() noexcept {
+        std::cerr << id_ << " destroyed\n";
+    }
+
+    Tracker(const Tracker& other) = delete;  // disable copy constructor
+    Tracker& operator=(const Tracker& other) = delete;  // disable copy assignment
+
+    Tracker(Tracker&& other) noexcept : id_(other.id_), data_(std::move(other.data_)) {
+        std::cerr << id_ << " moved from " << other.id_ << "\n";
+    }
+
+    Tracker& operator=(Tracker&& other) noexcept {
+        if (this == &other) return *this;
+        id_ = other.id_;
+        data_ = std::move(other.data_);
+        std::cerr << id_ << " moved from " << other.id_ << "\n";
+        return *this;
+    }
+
+    T& get() {
+        return *data_;
+    }
+
+    const T& get() const {
+        return *data_;
+    }
+};
 // ─── Stage 2 main ─────────────────────────────────────────────────────────────
-/*
 int main() {
     std::cerr << "=== Stage 2: unique_ptr Tracker ===\n";
 
@@ -157,7 +192,6 @@ int main() {
 
     return 0;
 }
-*/
 
 // =============================================================================
 // STAGE 3 — Shared ownership with std::shared_ptr<T>.
