@@ -1,0 +1,31 @@
+Assignment 4: TreeBook — short answers
+========================================
+
+Q1 (DRY — Part 3).
+    Quote the exact lines or expressions that were duplicated between your
+    Part 2 copy constructor and copy assignment. Which of the two refactors
+    did you choose (helper method, or copy-and-swap), and how does it
+    eliminate that duplication? If you chose copy-and-swap, also explain
+    why it is exception-safe.
+
+    YOUR ANSWER:
+
+
+Q2 (SRP — Part 4).
+    List every responsibility the `User` class had at the end of Part 3.
+    Mark which of them belonged to `FriendList`. How did extracting
+    `FriendList` change `User`'s special member functions — which became
+    `= default;`, which disappeared entirely, and which (if any) did you
+    keep hand-written and why?
+
+    YOUR ANSWER:
+
+
+Q3 (Rule of Zero — Part 6, if attempted).
+    Why does removing every SMF declaration from your `FriendList` and
+    `User` work after Part 6, but would have been a disaster after Part 1?
+    Specifically: in Part 2 you deleted the move SMFs on `User`. Do you
+    still want them deleted now that you've reached Part 6? Argue one way
+    or the other in 2–4 sentences.
+
+    YOUR ANSWER:
