@@ -34,6 +34,16 @@ std::ostream& operator<<(std::ostream& os, const User &user) {
   return os;
 }
 
+User& User::operator+=(User& rhs) {
+  this->add_friend(rhs.get_name());
+  rhs.add_friend(this->get_name());
+  return *this;
+}
+
+bool User::operator<(const User& rhs) const {
+  return this->get_name() < rhs.get_name();
+}
+
 // no longer needed since we are using FriendList which has its own copy constructor and assignment operator
 // User::~User() {
 //   delete[] _friends;
