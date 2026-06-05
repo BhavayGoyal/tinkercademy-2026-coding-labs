@@ -59,6 +59,17 @@ void User::set_friend(size_t index, const std::string& name)
   _friends[index] = name;
 }
 
+// FORMAT - User(name=Alice, friends=[Bob, Charlie])
+std::ostream& operator<<(std::ostream& os, const User &user) {
+  os << "User(name=" << user._name << ", friends=[";
+  for (int i = 0; i < user._size; ++i) {
+    os << user._friends[i];
+    os << (i == user._size - 1? "" : ", ");
+  }
+  os << "])";
+  return os;
+}
+
 /** 
  * STUDENT TODO:
  * The definitions for your custom operators and special member functions will go here!
