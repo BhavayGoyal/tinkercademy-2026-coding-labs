@@ -70,7 +70,30 @@ std::ostream& operator<<(std::ostream& os, const User &user) {
   return os;
 }
 
-/** 
- * STUDENT TODO:
- * The definitions for your custom operators and special member functions will go here!
- */
+User::~User() {
+  delete[] _friends;
+}
+
+User::User(const User& user) : _name(user._name), _size(user._size), _capacity(user._capacity) {
+  _friends = new std::string[_capacity];
+  for (int i = 0; i < _size; ++i) {
+    _friends[i] = user._friends[i];
+  }
+}
+
+User& User::operator=(const User& user) {
+  if (this == &user) return *this;
+
+  _name = user._name;
+  _size = user._size;
+  _capacity = user._capacity;
+
+  delete[] _friends;
+
+  _friends = new std::string[_capacity];
+  for (int i = 0; i < _size; ++i) {
+    _friends[i] = user._friends[i];
+  }
+
+  return *this;
+}

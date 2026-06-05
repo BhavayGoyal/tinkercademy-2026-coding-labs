@@ -22,6 +22,12 @@ public:
    */
   friend std::ostream& operator<<(std::ostream& os, const User& user);
 
+  ~User();
+  User(const User& user);
+  User& operator=(const User& user);
+  User(User&& user) = delete;
+  User& operator=(User&& user) = delete;
+
 private:
   std::string _name;
   std::string* _friends;
