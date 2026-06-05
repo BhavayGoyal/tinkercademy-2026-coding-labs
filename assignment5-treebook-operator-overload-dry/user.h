@@ -23,12 +23,11 @@ public:
    */
   friend std::ostream& operator<<(std::ostream& os, const User& user);
 
-  ~User() = default;
-  User(const User& user) = default;
-  User& operator=(const User& user) = default;
-
-  User(User&& user) = delete;
-  User& operator=(User&& user) = delete;
+  // ~User() = default;
+  // User(const User& user) = default;
+  // User& operator=(const User& user) = default;
+  // User(User&& user) = delete;
+  // User& operator=(User&& user) = delete;
 
   User& operator+=(User& rhs);
   bool operator<(const User& rhs) const;
