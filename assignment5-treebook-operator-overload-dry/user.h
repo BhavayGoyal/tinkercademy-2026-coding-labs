@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <string>
+#include "friend_list.h"
 
 class User
 {
@@ -22,17 +23,16 @@ public:
    */
   friend std::ostream& operator<<(std::ostream& os, const User& user);
 
-  ~User();
-  User(const User& user);
-  User& operator=(User user);
+  ~User() = default;
+  User(const User& user) = default;
+  User& operator=(const User& user) = default;
+
   User(User&& user) = delete;
   User& operator=(User&& user) = delete;
 
 private:
   std::string _name;
-  std::string* _friends;
-  size_t _size;
-  size_t _capacity;
+  FriendList _friends;
 
-  void swap(User& other) noexcept;
+  // void swap(User& other) noexcept; // no longer needed since we are using FriendList which has its own swap function
 };
