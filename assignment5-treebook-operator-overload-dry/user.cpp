@@ -74,6 +74,13 @@ User::~User() {
   delete[] _friends;
 }
 
+void User::swap(User& other) noexcept {
+  std::swap(_name, other._name);
+  std::swap(_friends, other._friends);
+  std::swap(_size, other._size);
+  std::swap(_capacity, other._capacity);
+}
+
 User::User(const User& user) : _name(user._name), _size(user._size), _capacity(user._capacity) {
   _friends = new std::string[_capacity];
   for (int i = 0; i < _size; ++i) {
@@ -81,19 +88,7 @@ User::User(const User& user) : _name(user._name), _size(user._size), _capacity(u
   }
 }
 
-User& User::operator=(const User& user) {
-  if (this == &user) return *this;
-
-  _name = user._name;
-  _size = user._size;
-  _capacity = user._capacity;
-
-  delete[] _friends;
-
-  _friends = new std::string[_capacity];
-  for (int i = 0; i < _size; ++i) {
-    _friends[i] = user._friends[i];
-  }
-
+User& User::operator=(User user) {
+  swap(user);
   return *this;
 }
