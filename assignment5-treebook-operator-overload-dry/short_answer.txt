@@ -8,8 +8,19 @@ Q1 (DRY — Part 3).
     eliminate that duplication? If you chose copy-and-swap, also explain
     why it is exception-safe.
 
-    YOUR ANSWER:
-
+YOUR ANSWER:
+The exact duplicate lines were:
+_size = other._size;
+_capacity = other._capacity;
+_name = other._name;
+_friends = new std::string[_capacity];
+for (size_t i = 0; i < _size; ++i) {
+    _friends[i] = other._friends[i];
+}
+I chose copy-and-swap refactor as it eliminates duplication by having the copy assignment operator take its parameter by value (which calls the copy constructor automatically) and then swapping
+the current object's state with that temporary copy. This way, the deep-copy logic only exists in the copy constructor and is being done once only.
+It is exception-safe also because all the dangerous operations like memory allocation or string copying will happen while creating the temporary copy. If exception occurs, the original object's
+state hasn't been changed yet. 
 
 Q2 (SRP — Part 4).
     List every responsibility the `User` class had at the end of Part 3.
@@ -18,8 +29,18 @@ Q2 (SRP — Part 4).
     `= default;`, which disappeared entirely, and which (if any) did you
     keep hand-written and why?
 
-    YOUR ANSWER:
+YOUR ANSWER: 
+1. Knowing _name (the user's name) (USER)
+2. Hold friends list (USER)
+3. Owning/managing a std::string* dynamic array (FriendList)
+4. Growing that array when capacity runs out (FriendList)
+5. copying that array when user is copied (FriendList)
+6. Releasing memory when User is deleted (FriendList)
+7. Printing FriendList information ((Printing with user (User)), Printing only Friendlist (Friendlist))
 
+After Extracting FriendList, the User class's special member functions changes as follows:
+1. Destructor, Copy Constructor, and Copy assignment can now be defined as default;. Since Friendlist object in User now is RAII and handles it's own lifecycle.
+2. Move constructor and move assignment still remain delete to maintain consistency with part 2 as it was instructed in part 2
 
 Q3 (Rule of Zero — Part 6, if attempted).
     Why does removing every SMF declaration from your `FriendList` and
@@ -28,4 +49,9 @@ Q3 (Rule of Zero — Part 6, if attempted).
     still want them deleted now that you've reached Part 6? Argue one way
     or the other in 2–4 sentences.
 
-    YOUR ANSWER:
+YOUR ANSWER:
+In part 1, the friend list is stored as a manually managed heap-allocated std::string array while in part 6, friends list is stored as an automatically managed std::vector of strings.
+Because all members of User (string and vector) are RAII and manage their own resources, User can follow the Rule of Zero and define no SMFs at all.
+Regarding the move SMFs: We do not need to delete them, but in part 2 they were deleted because we had not written logic to safely move the raw pointers so to maintain the consistent answers
+I marked them as delete in part 6 too. However, std::vector is indeed designed to move efficiently, so if we allow the compiler to generate move SMFs, we can allow the compiler to move User 
+objects.
