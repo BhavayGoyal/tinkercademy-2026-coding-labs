@@ -52,6 +52,6 @@ Q3 (Rule of Zero — Part 6, if attempted).
 YOUR ANSWER:
 In part 1, the friend list is stored as a manually managed heap-allocated std::string array while in part 6, friends list is stored as an automatically managed std::vector of strings.
 Because all members of User (string and vector) are RAII and manage their own resources, User can follow the Rule of Zero and define no SMFs at all.
-Regarding the move SMFs: We do not need to delete them, but in part 2 they were deleted because we had not written logic to safely move the raw pointers so to maintain the consistent answers (and also the test harness requires them to be deleted)
-I marked them as delete in part 6 too. However, std::vector is indeed designed to move efficiently, so if we allow the compiler to generate move SMFs, we can allow the compiler to move User 
-objects.
+Regarding the move SMFs: We do not need to delete them, but in part 2 they were deleted because we had not written logic to safely move the raw pointers so to maintain the consistent answers 
+(and also the test harness requires them to be deleted) I marked them as delete (In User.h, User.cpp file) and kept the others as default in part 6 too 
+(Though in friend_list.h/cpp all the constructors and destructors are removed completely following the rule of 0 their).
